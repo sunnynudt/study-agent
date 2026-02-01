@@ -1,5 +1,5 @@
 /**
- * Agent 核心逻辑 - 完整版（集成进度追踪 + 成就系统）
+ * Agent 核心逻辑 - 完整版（集成进度追踪 + 成就系统 + 每日任务）
  */
 
 const { classifyIntent, extractGrade, extractSubject, extractQuestionCount } = require('./core/intentClassifier');
@@ -8,12 +8,16 @@ const { QuestionBank } = require('./bank/questionBank');
 const InteractionService = require('./services/interactionService');
 const ProgressTracker = require('./progress/progressTracker');
 const AchievementSystem = require('./achievements/achievementSystem');
+const DailyTasks = require('./tasks/dailyTasks');
+const KnowledgeGraph = require('./knowledgeGraph/knowledgeGraph');
 const { gradeToChinese } = require('./utils/helpers');
 
 const questionBank = new QuestionBank();
 const interaction = new InteractionService();
 const progressTracker = new ProgressTracker();
 const achievementSystem = new AchievementSystem();
+const dailyTasks = new DailyTasks();
+const knowledgeGraph = new KnowledgeGraph();
 
 const SYSTEM_PROMPT = `你是上海市小学学习小助手 🍬，专门帮助二、三、四、五年级的小学生学习数学、英语和语文。
 
@@ -155,6 +159,10 @@ async function* agent(input, context) {
       // 记录答题
       progressTracker.recordAnswer(userId, summary.state.subject || 'math', result.correct, currentQ, topic);
       
+      // 记录每日任务
+      const targetSubject = summary.state.subject || 'math';
+      dailyTasks.recordCompletion(userId, targetSubject, 1);
+      
       if (result.correct) {
         yield { role: 'assistant', content: interaction.getEncouragement('correct') };
         
@@ -196,6 +204,61 @@ async function* agent(input, context) {
     const subjectMap = { math: '数学', english: '英语', chinese: '语文' };
     const newSubject = subject || 'math';
     yield { role: 'assistant', content: `好的！想学${subjectMap[newSubject]}吗？可以说"出${grade}道${subjectMap[newSubject]}题"或者直接问我问题！` };
+    return;
+  }
+  
+  // 查看每日任务
+  if (message.includes('任务') || message.includes('今日任务') || message.includes('每日任务')) {
+    const status = dailyTasks.getTaskStatus(userId);
+    let response = `📋 **今日学习任务**\n\n`;
+    status.status.forEach(s => { response += `${s}\n`; });
+    response += `\n📊 总体进度：${status.overallPercentage}%\n`;
+    response += `🔥 连续完成：${status.streak}天\n`;
+    
+    if (status.isComplete) {
+      response += `\n🎉 太棒了！今天的任务全部完成！`;
+    } else {
+      response += `\n💪 继续加油！快完成今天的任务了！`;
+    }
+    
+    yield { role: 'assistant', content: response };
+    return;
+  }
+  
+  // 设置每日任务
+  if (message.includes('设置') && (message.includes('数学') || message.includes('英语') || message.includes('语文'))) {
+    const count = extractQuestionCount(message) || 5;
+    const targetSubject = subject || 'math';
+    dailyTasks.updateDailyGoal(userId, targetSubject, count);
+    const subjectMap = { math: '数学', english: '英语', chinese: '语文' };
+    yield { role: 'assistant', content: `✅ 已设置${subjectMap[targetSubject]}每日任务：${count}道题` };
+    return;
+  }
+  
+  // 查看知识图谱
+  if (message.includes('知识图谱') || message.includes('掌握情况') || message.includes('学习情况')) {
+    const graphText = knowledgeGraph.formatAsciiGraph(userId);
+    yield { role: 'assistant', content: graphText };
+    return;
+  }
+  
+  // 查看本周统计
+  if (message.includes('本周') || message.includes('周统计')) {
+    const stats = dailyTasks.getWeeklyStats(userId);
+    let response = `📊 **本周学习统计**\n\n`;
+    
+    for (const day of stats.days) {
+      const total = day.math + day.english + day.chinese;
+      response += `${day.name}: ${total}题 `;
+      response += `(数:${day.math} 英:${day.english} 语:${day.chinese})\n`;
+    }
+    
+    response += `\n各科总计：\n`;
+    for (const [name, count] of Object.entries(stats.subjects)) {
+      response += `${name}: ${count}题\n`;
+    }
+    
+    yield { role: 'assistant', content: response };
     return;
   }
   

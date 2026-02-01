@@ -44,10 +44,10 @@ study-agent/
 ├── config.yaml
 ├── .gitignore
 ├── CHANGELOG.md
-├── data/                      # 用户数据存储 ⭐
+├── data/                      # 用户数据存储
 ├── src/
 │   ├── index.js              # 入口，OpenClaw Agent Wrapper
-│   ├── agent.js              # Agent 核心逻辑（完整版）⭐
+│   ├── agent.js              # Agent 核心逻辑（完整版）
 │   ├── core/
 │   │   ├── agentCore.js      # 核心 Agent 类
 │   │   ├── intentClassifier.js # 意图识别模块
@@ -60,10 +60,14 @@ study-agent/
 │   │   └── questionBank.js   # 题库模块
 │   ├── services/
 │   │   └── interactionService.js # 交互服务
-│   ├── progress/             # 进度追踪 ⭐
+│   ├── progress/             # 进度追踪
 │   │   └── progressTracker.js
-│   ├── achievements/         # 成就系统 ⭐
+│   ├── achievements/         # 成就系统
 │   │   └── achievementSystem.js
+│   ├── tasks/                # 每日任务 ⭐
+│   │   └── dailyTasks.js
+│   ├── knowledgeGraph/       # 知识图谱 ⭐
+│   │   └── knowledgeGraph.js
 │   ├── prompts/              # Prompt 模板
 │   │   ├── mathPrompts.js
 │   │   ├── englishPrompts.js
@@ -91,6 +95,9 @@ study-agent/
 "查看进度"                // 查看学习报告
 "我的成就"                // 查看成就勋章
 "错题本"                  // 查看错题复习
+"今日任务"                // 查看每日任务
+"知识图谱"                // 查看知识掌握情况
+"本周统计"                // 查看本周学习统计
 ```
 
 ### 题库功能
@@ -138,6 +145,44 @@ Agent 自动记录学习数据：
 // 查看成就
 "我的成就"                // 显示已获得勋章
 "有什么成就"              // 查看成就列表
+```
+
+### 每日任务
+
+设置和追踪每日学习目标：
+
+```javascript
+// 查看今日任务
+"今日任务"                // 显示各科任务进度
+"每日任务"                // 查看每日任务
+
+// 设置任务
+"设置数学每日5道题"       // 设置数学每日任务
+"英语每天10道"            // 设置英语每日任务
+```
+
+### 知识图谱
+
+查看知识掌握情况和学习建议：
+
+```javascript
+// 查看知识图谱
+"知识图谱"                // 以ASCII图展示掌握情况
+"掌握情况"                // 查看各知识点掌握度
+"学习情况"                // 查看整体学习情况
+
+// 查看统计
+"本周统计"                // 查看本周各天学习统计
+```
+
+### 弱项分析
+
+自动分析薄弱知识点：
+
+```javascript
+// 查看弱项
+"有什么薄弱点"             // 查看需要加强的知识点
+"推荐复习"                // 根据弱项推荐复习
 ```
 
 ### 意图识别
@@ -334,11 +379,12 @@ const report = tracker.generateReport(userId);
 - [x] 题库模块
 - [x] 进度追踪
 - [x] 成就系统
+- [x] 每日学习任务
+- [x] 知识点图谱
 - [ ] 语音交互（TTS/ASR）
 - [ ] 微信/小程序接入
 - [ ] 家长端报告
-- [ ] 每日学习任务
-- [ ] 知识点图谱
+- [ ] 多端数据同步
 
 ## License
 
