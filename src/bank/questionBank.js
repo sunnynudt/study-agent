@@ -257,7 +257,7 @@ class ChineseQuestionBank {
     
     return selected.map((title, i) => ({
       id: i + 1,
-      q: `请背诵古诗《${title》》的作者是谁？`,
+      q: `请背诵古诗《${title}》的作者是谁？`,
       a: this.getAuthor(title),
       type: 'poem',
       difficulty: 'easy',

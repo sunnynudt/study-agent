@@ -10,7 +10,7 @@ const INTENT_PATTERNS = {
   ],
   
   generate_questions: [
-    /出[题道]/,
+    /出.*题|出.*道/,
     /做.*[题卷子练习]/,
     /练习.*题/,
     /我要.*题/,

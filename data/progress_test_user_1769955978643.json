@@ -1,0 +1,47 @@
+{
+  "userId": "test_user_1769955978643",
+  "grade": 3,
+  "createdAt": "2026-02-01 22:26:18",
+  "lastActiveAt": "2026-02-01 22:26:18",
+  "totalQuestions": 3,
+  "correctAnswers": 2,
+  "subjects": {
+    "math": {
+      "questions": 2,
+      "correct": 1,
+      "topics": {
+        "addition": {
+          "total": 2,
+          "correct": 1
+        }
+      }
+    },
+    "english": {
+      "questions": 1,
+      "correct": 1,
+      "topics": {
+        "vocabulary": {
+          "total": 1,
+          "correct": 1
+        }
+      }
+    },
+    "chinese": {
+      "questions": 0,
+      "correct": 0,
+      "topics": {}
+    }
+  },
+  "dailyStats": [],
+  "wrongQuestions": [
+    {
+      "question": "2+2=?",
+      "answer": "4",
+      "subject": "math",
+      "topic": "addition",
+      "date": "2026-02-01 22:26:18"
+    }
+  ],
+  "streak": 1,
+  "lastStudyDate": "Sun Feb 01 2026"
+}

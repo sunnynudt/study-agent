@@ -9,6 +9,8 @@
 - 📏 **年级适配** - 2-5 年级难度自动调整
 - 💬 **上下文记忆** - 记住对话历史，提供连续性交互
 - 📝 **题库模块** - 内置练习题，支持出题和答案检查
+- 📊 **进度追踪** - 记录学习数据，分析掌握情况
+- 🏆 **成就系统** - 勋章激励，增强学习动力
 - 🌟 **鼓励式教育** - 表扬鼓励，增强学习信心
 - 🧠 **大模型驱动** - 使用 MiniMax M2.1 模型
 
@@ -42,9 +44,10 @@ study-agent/
 ├── config.yaml
 ├── .gitignore
 ├── CHANGELOG.md
+├── data/                      # 用户数据存储 ⭐
 ├── src/
 │   ├── index.js              # 入口，OpenClaw Agent Wrapper
-│   ├── agent.js              # Agent 核心逻辑（集成版）⭐
+│   ├── agent.js              # Agent 核心逻辑（完整版）⭐
 │   ├── core/
 │   │   ├── agentCore.js      # 核心 Agent 类
 │   │   ├── intentClassifier.js # 意图识别模块
@@ -54,15 +57,19 @@ study-agent/
 │   │   ├── english.js        # 英语模块
 │   │   └── chinese.js        # 语文模块
 │   ├── bank/
-│   │   └── questionBank.js   # 题库模块 ⭐
+│   │   └── questionBank.js   # 题库模块
 │   ├── services/
 │   │   └── interactionService.js # 交互服务
-│   ├── prompts/              # Prompt 模板 ⭐
+│   ├── progress/             # 进度追踪 ⭐
+│   │   └── progressTracker.js
+│   ├── achievements/         # 成就系统 ⭐
+│   │   └── achievementSystem.js
+│   ├── prompts/              # Prompt 模板
 │   │   ├── mathPrompts.js
 │   │   ├── englishPrompts.js
 │   │   └── chinesePrompts.js
 │   └── utils/
-│       └── helpers.js        # 工具函数 ⭐
+│       └── helpers.js        # 工具函数
 ├── knowledge/
 │   ├── math/curriculum.md    # 数学课程知识
 │   ├── english/curriculum.md # 英语课程知识
@@ -80,9 +87,10 @@ study-agent/
 "你好"                    // 欢迎语
 "我是二年级"              // 设置年级
 "出5道数学题"             // 出数学题（使用题库）
-"什么是分数？"            // 答疑
-"换英语吧"                // 切换学科
 "答案是25"                // 检查答案
+"查看进度"                // 查看学习报告
+"我的成就"                // 查看成就勋章
+"错题本"                  // 查看错题复习
 ```
 
 ### 题库功能
@@ -100,6 +108,38 @@ Agent 内置题库，支持出题和答案检查：
 "我算出来是25"            // 检查答案并得到反馈
 ```
 
+### 进度追踪
+
+Agent 自动记录学习数据：
+
+```javascript
+// 查看学习报告
+"查看进度"                // 显示总题数、正确率、连续学习天数
+"学习报告"                // 详细报告
+
+// 查看错题本
+"错题本"                  // 显示最近错题
+"复习错题"                // 复习错题
+```
+
+### 成就系统
+
+通过做题获得成就勋章：
+
+| 成就 | 条件 | 描述 |
+|------|------|------|
+| 🎯 初露锋芒 | 完成1道题 | 第一次答题 |
+| 📝 十题达人 | 完成10道题 | 完成10道题目 |
+| 🔥 三天打鱼 | 连续学习3天 | 连续学习 |
+| 💯 满分高手 | 一次全对 | 一次练习全部正确 |
+| 🎓 三科全能 | 每科各10题 | 三科都有学习 |
+
+```javascript
+// 查看成就
+"我的成就"                // 显示已获得勋章
+"有什么成就"              // 查看成就列表
+```
+
 ### 意图识别
 
 Agent 自动识别以下意图：
@@ -109,9 +149,11 @@ Agent 自动识别以下意图：
 | greeting | "你好"、"在吗" | 打招呼 |
 | generate_questions | "出5道数学题" | 出练习题（题库） |
 | answer_question | "什么是分数" | 答疑解惑 |
-| explain_concept | "讲一下分数" | 概念讲解 |
 | check_answer | "答案是25" | 检查答案（题库） |
 | change_subject | "换英语吧" | 切换学科 |
+| view_progress | "查看进度" | 查看学习报告 |
+| view_achievements | "我的成就" | 查看成就勋章 |
+| view_wrong_questions | "错题本" | 查看错题 |
 
 ### 学科识别
 
@@ -195,6 +237,66 @@ const result = bank.checkAnswer('math', questions[0], '42');
 console.log(result.correct); // true 或 false
 ```
 
+## 进度追踪模块
+
+### 功能
+
+- 记录答题数量和正确率
+- 追踪各学科学习情况
+- 记录连续学习天数
+- 自动收集错题（最多20题）
+- 生成学习报告
+
+### 使用
+
+```javascript
+const ProgressTracker = require('./src/progress/progressTracker');
+
+const tracker = new ProgressTracker();
+
+// 记录答题
+tracker.recordAnswer(userId, 'math', true, { q: '1+1=?', a: '2' }, 'addition');
+
+// 获取统计
+const summary = tracker.getSummary(userId);
+// { totalQuestions: 1, correctAnswers: 1, accuracy: '100%', ... }
+
+// 获取弱项分析
+const weakPoints = tracker.getWeakPoints(userId);
+
+// 生成报告
+const report = tracker.generateReport(userId);
+```
+
+## 成就系统模块
+
+### 功能
+
+- 15+ 种成就勋章
+- 实时检测解锁
+- 成就庆祝动画
+- 目标提示
+
+### 成就列表
+
+| 成就名称 | 解锁条件 |
+|---------|---------|
+| 🎯 初露锋芒 | 完成第1道题 |
+| 📝 十题达人 | 完成10道题 |
+| 📚 学富五车 | 完成50道题 |
+| 🏆 百题斩 | 完成100道题 |
+| 🔥 三天打鱼 | 连续学习3天 |
+| 🌟 一周坚持 | 连续学习7天 |
+| 💪 月度学习者 | 连续学习30天 |
+| 🎯 80%准确率 | 正确率达到80% |
+| 🌟 90%准确率 | 正确率达到90% |
+| 💯 满分高手 | 一次练习全对 |
+| 🔢 数学小达人 | 完成20道数学题 |
+| 📖 英语小达人 | 完成20道英语题 |
+| 📕 语文小达人 | 完成20道语文题 |
+| 🎓 三科全能 | 每科各完成10题 |
+| 📖 错题本 | 记录5道错题 |
+
 ## 知识点结构
 
 参考 `knowledge/` 目录下的课程大纲：
@@ -215,6 +317,13 @@ console.log(result.correct); // true 或 false
 - **框架**: OpenClaw
 - **模型**: MiniMax M2.1
 - **测试**: Node.js assert
+- **数据存储**: JSON 文件
+
+## 数据存储
+
+用户数据保存在 `data/` 目录：
+
+- `progress_{userId}.json` - 用户学习进度
 
 ## 版本更新
 
@@ -223,11 +332,13 @@ console.log(result.correct); // true 或 false
 ## 下一步
 
 - [x] 题库模块
-- [ ] Prompt 模板
-- [ ] 用户进度追踪
-- [ ] 语音交互
+- [x] 进度追踪
+- [x] 成就系统
+- [ ] 语音交互（TTS/ASR）
 - [ ] 微信/小程序接入
-- [ ] 多端数据同步
+- [ ] 家长端报告
+- [ ] 每日学习任务
+- [ ] 知识点图谱
 
 ## License
 

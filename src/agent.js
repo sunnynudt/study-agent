@@ -1,15 +1,19 @@
 /**
- * Agent 核心逻辑 - 集成版
+ * Agent 核心逻辑 - 完整版（集成进度追踪 + 成就系统）
  */
 
 const { classifyIntent, extractGrade, extractSubject, extractQuestionCount } = require('./core/intentClassifier');
 const ContextManager = require('./core/contextManager');
 const { QuestionBank } = require('./bank/questionBank');
 const InteractionService = require('./services/interactionService');
-const { randomPick, gradeToChinese } = require('./utils/helpers');
+const ProgressTracker = require('./progress/progressTracker');
+const AchievementSystem = require('./achievements/achievementSystem');
+const { gradeToChinese } = require('./utils/helpers');
 
 const questionBank = new QuestionBank();
 const interaction = new InteractionService();
+const progressTracker = new ProgressTracker();
+const achievementSystem = new AchievementSystem();
 
 const SYSTEM_PROMPT = `你是上海市小学学习小助手 🍬，专门帮助二、三、四、五年级的小学生学习数学、英语和语文。
 
@@ -18,12 +22,14 @@ const SYSTEM_PROMPT = `你是上海市小学学习小助手 🍬，专门帮助�
 - 善于鼓励，当小朋友做对题目时要表扬
 - 讲解清晰，复杂的概念要拆分成简单步骤
 - 对于 2-5 年级学生，内容难度要适中
+- 会根据学习进度给予成就勋章
 
 ## 功能
 1. **出题目**：根据年级和学科出练习题（使用题库）
 2. **答疑问**：回答学习中的困惑
 3. **讲解**：解释知识点和题目
-4. **检查答案**：核对答案并给予反馈`;
+4. **检查答案**：核对答案并给予反馈和进度记录
+5. **查看进度**：可以查看学习报告和成就`;
 
 function extractTopic(message) {
   const topics = {
@@ -56,7 +62,56 @@ async function* agent(input, context) {
   
   // 打招呼
   if (intent === 'greeting') {
-    yield { role: 'assistant', content: interaction.getWelcomeMessage(interaction.getTimeOfDay(), false) };
+    const welcome = interaction.getWelcomeMessage(interaction.getTimeOfDay(), false);
+    yield { role: 'assistant', content: welcome };
+    return;
+  }
+  
+  // 查看进度/报告
+  if (message.includes('进度') || message.includes('报告') || message.includes('统计')) {
+    const report = progressTracker.generateReport(userId);
+    let response = `📊 **学习报告**\n\n`;
+    response += `📅 ${report.date}\n\n`;
+    response += `**总览**\n`;
+    response += `- 总题数：${report.summary.总题数}\n`;
+    response += `- 正确数：${report.summary.正确数}\n`;
+    response += `- 正确率：${report.summary.正确率}\n`;
+    response += `- 连续学习：${report.summary.连续学习}\n\n`;
+    response += `**各科统计**\n`;
+    response += `- 数学：${report.subjects.数学}\n`;
+    response += `- 英语：${report.subjects.英语}\n`;
+    response += `- 语文：${report.subjects.语文}\n\n`;
+    response += `**成就勋章**\n`;
+    response += achievementSystem.formatAchievements(progressTracker.getProgress(userId));
+    yield { role: 'assistant', content: response };
+    return;
+  }
+  
+  // 查看成就
+  if (message.includes('成就') || message.includes('勋章')) {
+    const achievements = achievementSystem.getAllAchievements(progressTracker.getProgress(userId));
+    let response = `🏆 **我的成就** (${achievements.earned}/${achievements.total})\n\n`;
+    response += achievementSystem.formatAchievements(progressTracker.getProgress(userId));
+    response += `\n\n${achievementSystem.getNextGoal(progressTracker.getProgress(userId))}`;
+    yield { role: 'assistant', content: response };
+    return;
+  }
+  
+  // 查看错题本
+  if (message.includes('错题') || message.includes('复习')) {
+    const wrongQuestions = progressTracker.getWrongQuestions(userId);
+    if (wrongQuestions.length === 0) {
+      yield { role: 'assistant', content: '📝 错题本是空的！说明你都很厉害，没有做错～继续保持！' };
+    } else {
+      let response = `📝 **错题本** (共${wrongQuestions.length}题)\n\n`;
+      wrongQuestions.slice(-5).forEach((q, i) => {
+        response += `**${i + 1}.** ${q.question}\n`;
+        response += `   答案：${q.answer}\n`;
+        response += `   学科：${q.subject}\n\n`;
+      });
+      response += `💡 经常复习错题，可以避免再犯同样的错误哦！`;
+      yield { role: 'assistant', content: response };
+    }
     return;
   }
   
@@ -75,13 +130,15 @@ async function* agent(input, context) {
       response += `**第${i + 1}题** ${q.q}\n\n`;
     });
     
-    response += `\n💡 做完后可以告诉我答案，我来帮你检查！`;
+    response += `\n💡 做完后可以告诉我答案，我来帮你检查！\n`;
+    response += `📊 完成答题后可以查看学习进度报告哦～`;
     
     // 保存题目到上下文
     cm.updateState(userId, { 
       inQuestionSession: true, 
       questions,
-      currentQuestionIndex: 0 
+      currentQuestionIndex: 0,
+      subject: targetSubject
     });
     
     yield { role: 'assistant', content: response };
@@ -92,11 +149,20 @@ async function* agent(input, context) {
   if (intent === 'check_answer' || summary.state?.inQuestionSession) {
     const questions = summary.state?.questions || [];
     if (questions.length > 0) {
-      // 用户在回答题目
-      const result = questionBank.checkAnswer(subject || 'math', questions[summary.state.currentQuestionIndex], message);
+      const currentQ = questions[summary.state.currentQuestionIndex];
+      const result = questionBank.checkAnswer(summary.state.subject || 'math', currentQ, message);
+      
+      // 记录答题
+      progressTracker.recordAnswer(userId, summary.state.subject || 'math', result.correct, currentQ, topic);
       
       if (result.correct) {
         yield { role: 'assistant', content: interaction.getEncouragement('correct') };
+        
+        // 检查新成就
+        const newAchievements = achievementSystem.checkAchievements(progressTracker.getProgress(userId));
+        if (newAchievements.length > 0) {
+          yield { role: 'assistant', content: achievementSystem.celebrateNewAchievement(newAchievements[0]) };
+        }
         
         // 下一题
         const nextIndex = summary.state.currentQuestionIndex + 1;
@@ -105,10 +171,12 @@ async function* agent(input, context) {
           yield { role: 'assistant', content: `下一题：**${questions[nextIndex].q}**` };
         } else {
           cm.updateState(userId, { inQuestionSession: false, currentQuestionIndex: 0 });
-          yield { role: 'assistant', content: interaction.getEncouragement('complete') };
+          const finalResponse = interaction.getEncouragement('complete');
+          const goal = achievementSystem.getNextGoal(progressTracker.getProgress(userId));
+          yield { role: 'assistant', content: `${finalResponse}\n\n${goal}` };
         }
       } else {
-        yield { role: 'assistant', content: interaction.getEncouragement('incorrect') + `\n\n答案是：${result.correctAnswer}` };
+        yield { role: 'assistant', content: interaction.getEncouragement('incorrect') + `\n\n**答案是：${result.correctAnswer}**` };
       }
       return;
     }
@@ -126,7 +194,8 @@ async function* agent(input, context) {
   // 切换学科
   if (intent === 'change_subject') {
     const subjectMap = { math: '数学', english: '英语', chinese: '语文' };
-    yield { role: 'assistant', content: `好的！想学${subjectMap[subject]}吗？可以说"出${grade}道${subjectMap[subject]}题"或者直接问我问题！` };
+    const newSubject = subject || 'math';
+    yield { role: 'assistant', content: `好的！想学${subjectMap[newSubject]}吗？可以说"出${grade}道${subjectMap[newSubject]}题"或者直接问我问题！` };
     return;
   }
   
@@ -134,4 +203,4 @@ async function* agent(input, context) {
   yield { role: 'user', content: message };
 }
 
-module.exports = { agent, classifyIntent, extractGrade, extractSubject };
+module.exports = { agent };
