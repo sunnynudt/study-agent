@@ -1,0 +1,18 @@
+{
+  "name": "study-agent",
+  "version": "1.0.0",
+  "description": "AI Tutor Agent for Primary School Students (Grades 2-5)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node tests/index.test.js"
+  },
+  "keywords": ["education", "agent", "primary-school", "ai-tutor"],
+  "author": "Candy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sunnynudt/study-agent.git"
+  }
+}

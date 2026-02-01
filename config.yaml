@@ -1,0 +1,23 @@
+# Agent 配置
+
+agent:
+  name: "学习小助手"
+  personality: "亲切、有耐心、鼓励式教育"
+  model: "minimax/MiniMax-M2.1"
+
+grades:
+  min: 2
+  max: 5
+
+subjects:
+  - math
+  - english
+  - chinese
+
+conversation:
+  max_history: 20
+  context_window: 64000
+
+safety:
+  content_filter: true
+  max_response_length: 2000
