@@ -68,6 +68,14 @@ study-agent/
 │   │   └── dailyTasks.js
 │   ├── knowledgeGraph/       # 知识图谱 ⭐
 │   │   └── knowledgeGraph.js
+│   ├── challenges/           # 挑战系统 🎮 (NEW!)
+│   │   └── challengeSystem.js
+│   ├── pet/                  # 学习伙伴 🦖 (NEW!)
+│   │   └── learningPet.js
+│   ├── engine/               # 智能出题引擎 🎯 (NEW!)
+│   │   └── smartQuestionEngine.js
+│   ├── report/               # 家长端报告 👨‍👩‍👧 (NEW!)
+│   │   └── parentReport.js
 │   ├── prompts/              # Prompt 模板
 │   │   ├── mathPrompts.js
 │   │   ├── englishPrompts.js
@@ -385,6 +393,40 @@ const report = tracker.generateReport(userId);
 - [ ] 微信/小程序接入
 - [ ] 家长端报告
 - [ ] 多端数据同步
+
+## ✨ 新增功能（v1.1.0）
+
+### 🎮 挑战系统
+```
+"今日挑战"                # 查看可用挑战列表
+"开始挑战 闪电计算"       # 开始挑战
+"完成挑战 闪电计算 8/10"  # 结算挑战结果
+"挑战成就"                # 查看挑战成就
+"挑战排行"                # 查看排行榜
+```
+
+### 🦖 学习伙伴（宠物养成）
+```
+"我的伙伴"                # 查看/领取宠物
+"我要小恐龙"              # 选择宠物
+"喂水果"                  # 喂食宠物
+"宠物状态"                # 查看宠物状态
+"加油"                    # 获取宠物鼓励
+```
+
+### 🎯 智能出题引擎
+```
+"复习错题"                # 针对错题强化训练
+"智能出题"                # 查看出题模式菜单
+"挑战题目"                # 获取高难度题目
+```
+
+### 👨‍👩‍👧 家长端报告
+```
+"家长报告"                # 每日报告
+"周报告"                  # 周度报告
+"月报告"                  # 月度报告
+```
 
 ## License
 
