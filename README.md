@@ -13,6 +13,11 @@
 - 🏆 **成就系统** - 勋章激励，增强学习动力
 - 🌟 **鼓励式教育** - 表扬鼓励，增强学习信心
 - 🧠 **大模型驱动** - 使用 MiniMax M2.1 模型
+- 🎮 **挑战系统** - 趣味挑战模式（新增）
+- 🦖 **学习伙伴** - 宠物养成系统（新增）
+- 🎯 **智能出题** - 个性化自适应出题（新增）
+- 👨‍👩‍👧 **家长报告** - 详细学习报告（新增）
+- 👥 **学习小队** - 协作学习系统（新增）
 
 ## 快速开始
 
@@ -290,6 +295,26 @@ const result = bank.checkAnswer('math', questions[0], '42');
 console.log(result.correct); // true 或 false
 ```
 
+### 扩展题库模块
+
+支持更多题目，覆盖更多知识点：
+
+```javascript
+const { ExtendedQuestionBank } = require('./src/bank/extendedQuestionBank');
+
+const extendedBank = new ExtendedQuestionBank();
+
+// 获取题目数量
+console.log(extendedBank.getTotalCount('math')); // 数学题总数
+
+// 出题
+const questions = extendedBank.getQuestions('math', {
+  grade: 3,
+  count: 10,
+  type: 'mixed'
+});
+```
+
 ## 进度追踪模块
 
 ### 功能
@@ -426,6 +451,22 @@ const report = tracker.generateReport(userId);
 "家长报告"                # 每日报告
 "周报告"                  # 周度报告
 "月报告"                  # 月度报告
+```
+
+### 👥 学习小队
+```
+"学习小队"                # 查看/创建小队
+"创建小队"                # 创建学习小队
+"加入小队 ABC123"         # 通过邀请码加入
+"小队排行"                # 队内排行榜
+"团队任务"                # 查看团队任务
+"小队加油"                # 获取团队鼓励
+```
+
+### 🏆 扩展成就
+```
+"成就进度"                # 查看成就进度条
+"总积分"                  # 查看成就总积分
 ```
 
 ## License

@@ -1,32 +1,38 @@
 /**
- * Agent 核心逻辑 - 完整版（集成进度追踪 + 成就系统 + 每日任务 + 挑战系统 + 学习伙伴）
+ * Agent 核心逻辑 - 完整版（集成进度追踪 + 成就系统 + 每日任务 + 挑战系统 + 学习伙伴 + 小队系统）
  */
 
 const { classifyIntent, extractGrade, extractSubject, extractQuestionCount } = require('./core/intentClassifier');
 const ContextManager = require('./core/contextManager');
 const { QuestionBank } = require('./bank/questionBank');
+const { ExtendedQuestionBank } = require('./bank/extendedQuestionBank');
 const InteractionService = require('./services/interactionService');
 const ProgressTracker = require('./progress/progressTracker');
 const AchievementSystem = require('./achievements/achievementSystem');
+const { ExtendedAchievementSystem } = require('./achievements/extendedAchievements');
 const DailyTasks = require('./tasks/dailyTasks');
 const KnowledgeGraph = require('./knowledgeGraph/knowledgeGraph');
 const ChallengeSystem = require('./challenges/challengeSystem');
 const LearningPet = require('./pet/learningPet');
 const SmartQuestionEngine = require('./engine/smartQuestionEngine');
 const ParentReportSystem = require('./report/parentReport');
+const LearningTeamSystem = require('./team/learningTeam');
 const { gradeToChinese } = require('./utils/helpers');
 
-// 实例化新模块
+// 实例化所有模块
 const questionBank = new QuestionBank();
+const extendedBank = new ExtendedQuestionBank();
 const interaction = new InteractionService();
 const progressTracker = new ProgressTracker();
 const achievementSystem = new AchievementSystem();
+const extendedAchievements = new ExtendedAchievementSystem();
 const dailyTasks = new DailyTasks();
 const knowledgeGraph = new KnowledgeGraph();
 const challengeSystem = new ChallengeSystem();
 const learningPet = new LearningPet();
 const smartEngine = new SmartQuestionEngine();
 const parentReport = new ParentReportSystem();
+const teamSystem = new LearningTeamSystem();
 
 const SYSTEM_PROMPT = `你是上海市小学学习小助手 🍬，专门帮助二、三、四、五年级的小学生学习数学、英语和语文。
 
@@ -479,6 +485,163 @@ async function* agent(input, context) {
     const report = parentReport.generateMonthlyReport(userId);
     const formatted = parentReport.formatReport(report);
     yield { role: 'assistant', content: formatted };
+    return;
+  }
+  
+  // ========== 👥 学习小队 ==========
+  if (message.includes('学习小队') || message.includes('小队') || message.includes('团队')) {
+    const teamInfo = teamSystem.formatTeamInfo(userId);
+    yield { role: 'assistant', content: teamInfo };
+    return;
+  }
+  
+  if (message.includes('创建小队') || message.includes('新建小队')) {
+    const typeMap = {
+      '学习': 'study',
+      '数学': 'math',
+      '英语': 'english',
+      '语文': 'chinese',
+      '阅读': 'reading'
+    };
+    
+    let teamType = 'study';
+    for (const [name, type] of Object.entries(typeMap)) {
+      if (message.includes(name)) {
+        teamType = type;
+        break;
+      }
+    }
+    
+    const result = teamSystem.createTeam(userId, '小朋友', `${gradeToChinese(grade)}学习队`, teamType);
+    yield { role: 'assistant', content: result.message };
+    return;
+  }
+  
+  if (message.includes('加入小队') || message.includes('小队邀请')) {
+    const codeMatch = message.match(/[A-Z]{6}/);
+    if (codeMatch) {
+      const result = teamSystem.joinByCode(userId, '小朋友', codeMatch[0]);
+      yield { role: 'assistant', content: result.message };
+    } else {
+      yield { role: 'assistant', content: '请提供正确的邀请码，例如："加入小队 ABC123"' };
+    }
+    return;
+  }
+  
+  if (message.includes('小队排行') || message.includes('队内排行')) {
+    const leaderboard = teamSystem.formatTeamLeaderboard(userId);
+    yield { role: 'assistant', content: leaderboard };
+    return;
+  }
+  
+  if (message.includes('团队任务') || message.includes('小队任务')) {
+    const tasks = teamSystem.formatTeamTasks(userId);
+    yield { role: 'assistant', content: tasks };
+    return;
+  }
+  
+  if (message.includes('小队加油') || message.includes('团队鼓励')) {
+    const encouragement = teamSystem.getTeamEncouragement(userId);
+    if (encouragement.teamName) {
+      yield { role: 'assistant', content: `${encouragement.emoji} ${encouragement.message}` };
+    } else {
+      yield { role: 'assistant', content: encouragement.message };
+    }
+    return;
+  }
+  
+  // ========== 🏆 扩展成就 ==========
+  if (message.includes('成就进度') || message.includes('进度条')) {
+    const progress = progressTracker.getProgress(userId);
+    const progressBar = extendedAchievements.formatProgressBar(progress, { earnedAchievements: [] });
+    yield { role: 'assistant', content: progressBar };
+    return;
+  }
+  
+  if (message.includes('积分') || message.includes('总积分')) {
+    const progress = progressTracker.getProgress(userId);
+    const achievements = extendedAchievements.getAllAchievements(progress, { earnedAchievements: [] });
+    yield { role: 'assistant', content: `📊 总积分：${achievements.totalPoints}分 (${achievements.earned}/${achievements.total}个成就)` };
+    return;
+  }
+  
+  // ========== 📚 题库扩展 ==========
+  if (message.includes('多出点') || message.includes('换一批')) {
+    const subjectMap = { math: '数学', english: '英语', chinese: '语文' };
+    const targetSubject = subject || 'math';
+    const count = extractQuestionCount(message) || 5;
+    
+    // 使用扩展题库
+    const questions = extendedBank.getQuestions(targetSubject, { grade, count, type: 'mixed' });
+    
+    let response = `📚 换一批${gradeToChinese(grade)}${subjectMap[targetSubject]}练习题，共${questions.length}道：\n\n`;
+    
+    questions.forEach((q, i) => {
+      response += `**第${i + 1}题** ${q.q}\n\n`;
+    });
+    
+    response += `\n💡 做完后可以告诉我答案，我来帮你检查！`;
+    yield { role: 'assistant', content: response };
+    return;
+  }
+  
+  // ========== 🌙 深夜模式 ==========
+  const hour = new Date().getHours();
+  if (hour >= 22 || hour < 6) {
+    // 深夜模式特殊回复
+    if (message.includes('晚安') || message.includes('睡觉') || message.includes('休息')) {
+      const petEncouragement = learningPet.getEncouragement(userId);
+      yield { role: 'assistant', content: `🌙 晚安！${petEncouragement}\n\n🛏️ 早点休息，明天继续学习！` };
+      return;
+    }
+  }
+  
+  // ========== 快捷帮助 ==========
+  if (message.includes('帮助') || message.includes('怎么用') || message.includes('功能')) {
+    const helpText = `
+📚 **学习助手功能菜单**
+
+**🎯 出题练习**
+- "出5道数学题"
+- "来点英语练习"
+- "换一批语文题"
+
+**📊 查看进度**
+- "查看进度"
+- "今日任务"
+- "我的成就"
+- "知识图谱"
+
+**🎮 趣味挑战**
+- "今日挑战"
+- "开始挑战 闪电计算"
+- "挑战排行"
+
+**🦖 学习伙伴**
+- "我的伙伴"
+- "我要小恐龙"
+- "喂水果"
+- "宠物状态"
+
+**👥 学习小队**
+- "学习小队"
+- "创建小队"
+- "加入小队 ABC123"
+- "小队排行"
+
+**📋 家长报告**
+- "家长报告"
+- "周报告"
+- "月报告"
+
+**💡 智能功能**
+- "复习错题"
+- "挑战题目"
+- "智能出题"
+
+有什么想问的，尽管告诉我吧！😊
+`;
+    yield { role: 'assistant', content: helpText };
     return;
   }
   
